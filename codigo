@@ -1,0 +1,132 @@
+#include <stdint.h>
+#include "stm32l053xx.h"
+#include <stdio.h>
+
+
+void delay_ms(uint16_t n);
+void USART2_write(uint8_t ch);
+void USART2_putstring(uint8_t* StringPtr);
+void USART2_putstring_E(uint8_t* StringPtr);
+uint8_t USART2_read(void);
+uint8_t mychar = 0x00;
+void USART2_read_line(char *buffer);
+int main(void) {
+	uint8_t nnsaldo = 0;
+	uint8_t nsaldo = 0;
+	uint8_t saldo = 200;
+	uint8_t deposito = 0;
+	uint8_t retiro = 0;
+	char buffer[50];
+
+
+	//Enable Clk
+	//For the peripherals under use via RCC reg
+	//PORTA
+	RCC->IOPENR |= 1 << 0;
+
+	//TEST GPIOA PA5
+	GPIOA->MODER &= ~(1 << 11); //PA5 for blink test
+
+	//USART 2 pin configuration
+	//Alternate Function MODE for PA2 and PA3
+
+	GPIOA->MODER &= ~(1 << 4); //PA2 as AF, MODER [10]
+	GPIOA->MODER &= ~(1 << 6); //PA3 as AF, MODER [10]
+	//SELECT WICH MODER, AF4 FOR USART2, TX ON PA2 :: RX ON PA3
+
+	GPIOA->AFR[0] |= 1 << 10; //PA2 MAPPED AS AF4
+	GPIOA->AFR[0] |= 1 << 14; //PA3 MAPPED AS AF4
+
+
+
+	//USART PERIPHEAL CONFIGURATION
+	//USART2 CLOCK ENABLE ON RCC APB1ENR REGISTER
+	RCC->APB1ENR |= 1 << 17;
+	//BAUD RATE CALCULATION 9600 with 2,097Mhz
+	USART2->BRR = 218;
+	//ENABLE TX AND RX
+	USART2->CR1 |= (1 << 2) | (1 << 3);
+	//ENABLE PERIPHERAL
+	USART2->CR1 |= 1 << 0;
+// ''
+
+	while(1)
+	{
+	    USART2_putstring_E("BIENVENDIDO ATM GUATEMALA");
+	    USART2_putstring_E("   SELECCIONE OPCION     ");
+	    USART2_putstring_E("1 CONSULTAR SALDO");
+	    USART2_putstring_E("2 DEPOSITO");
+	    USART2_putstring_E("3 RETIRO");
+
+	    mychar = USART2_read();
+
+
+		if(mychar == '1')
+		{
+         sprintf(buffer,"El saldo es de: %d",saldo);
+		 USART2_putstring_E(buffer);
+     	}
+
+
+		else if (mychar == '2')
+		{
+			USART2_putstring_E("INGRESE LA CANTIDAD A DEPOSITAR:  ");
+			deposito=USART2_read();
+			nsaldo = saldo + deposito;					;
+			USART2_putstring_E("El NUEVO SALDO ES:  ");
+			sprintf(buffer,"%d\r\n", nsaldo);
+			USART2_putstring_E(buffer);
+		}
+		else if (mychar == '3')
+		{
+			USART2_putstring_E("INGRESE LA CANTIDAD A RETIRAR:  ");
+						retiro=USART2_read();
+						nnsaldo = saldo - retiro;
+						USART2_putstring_E("El NUEVO SALDO ES:  ");
+						sprintf(buffer,"%d\r\n", nnsaldo);
+						USART2_putstring_E(buffer);
+		}
+
+
+		delay_ms(1000);
+	}
+}
+
+uint8_t USART2_read(void)
+
+{
+	while(!(USART2->ISR & 0x0020)){}
+	return USART2->RDR;
+}
+
+void USART2_write(uint8_t ch)
+{
+
+	while(!(USART2->ISR & 0x0080)){}
+	USART2->TDR = ch;
+
+}
+
+
+void USART2_putstring_E(uint8_t* StringPtr)
+{
+
+	while(*StringPtr !=0x00)
+	{
+	   USART2_write(*StringPtr);
+	   StringPtr++;
+	}
+
+	   USART2_write(0x0D);
+	   USART2_write(0x0A);
+
+}
+
+
+void delay_ms(uint16_t n)
+{
+	uint16_t i;
+	for (; n>0; n--)
+		for (i = 0; i<140; i++);
+
+}
